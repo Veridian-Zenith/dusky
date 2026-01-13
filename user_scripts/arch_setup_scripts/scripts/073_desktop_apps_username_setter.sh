@@ -68,6 +68,7 @@ readonly TARGET_FILES=(
     "IO_Monitor.desktop"
     "iphone_vnc.desktop"
     "matugen.desktop"
+    "monitor_tui.desktop"
     "mouse_button_reverse.desktop"
     "new_github_repo.desktop"
     "opacity_blur_shadow.desktop"
