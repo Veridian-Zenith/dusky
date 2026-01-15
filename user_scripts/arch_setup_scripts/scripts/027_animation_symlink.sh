@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # set Hyprland animation config to dusky (Default)
 # -----------------------------------------------------------------------------
-# Purpose: Switch Hyprland animation config to 'dusky.conf'
+# Purpose: Switch Hyprland animation config to 'dusky.conf' & reload
 # Env:     Arch Linux / Hyprland / UWSM
 # -----------------------------------------------------------------------------
 
@@ -31,6 +31,10 @@ main() {
 
     # Create symlink (force overwrites existing file/symlink)
     ln -sf "$SOURCE_FILE" "$TARGET_LINK"
+
+    # Reload Hyprland to apply changes immediately
+    # Muting stdout to keep your script's logging clean
+    hyprctl reload > /dev/null
 
     printf "[${C_GREY}%s${C_RESET}] ${C_BLUE}[INFO]${C_RESET}  Switched animation to: ${C_GREEN}dusky${C_RESET}\n" \
         "$(date +%T)"
