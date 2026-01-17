@@ -3,6 +3,7 @@
 # Script: warp-toggle.sh
 # Description: Robust toggle for Cloudflare WARP with UWSM/Hyprland notifications.
 #              Automatically handles TOS acceptance if pending.
+#              Soft-fails if WARP is not installed (prevents orchestrator errors).
 #              also supports --disconnect and --connect flags
 # Author: Elite DevOps
 # Environment: Arch Linux / Hyprland / UWSM
@@ -155,14 +156,14 @@ EOF
 }
 
 main() {
-    # 1. Dependency Check
+    # 1. Dependency Check (Soft Fail)
+    # If warp-cli is missing, warn and exit 0 to keep orchestrator happy.
     if ! command -v warp-cli &>/dev/null; then
-        log_error "warp-cli not found. Please install 'cloudflare-warp-bin'."
-        exit 1
+        log_warn "warp-cli not found. Skipping WARP toggle."
+        exit 0
     fi
 
     # 2. Ensure TOS is accepted BEFORE checking status
-    #    This prevents "Unknown" status errors caused by the TOS prompt.
     ensure_tos_accepted
 
     # 3. Argument Parsing
@@ -177,7 +178,7 @@ main() {
         shift
     done
 
-    # 4. Get Status (Should work now that TOS is handled)
+    # 4. Get Status
     local status
     status=$(get_warp_status) || status="Unknown"
 
@@ -207,7 +208,6 @@ main() {
                     wait_for_connection
                     ;;
                 *)
-                    # If status is still Unknown, we try connecting anyway.
                     log_warn "Unknown status detected: '$status'. Attempting to connect."
                     wait_for_connection
                     ;;
