@@ -74,6 +74,7 @@ readonly TARGET_FILES=(
     "monitor_tui.desktop"
     "mouse_button_reverse.desktop"
     "new_github_repo.desktop"
+    "ollama_terminal.desktop"
     "opacity_blur_shadow.desktop"
     "openssh.desktop"
     "powersave.desktop"
