@@ -168,7 +168,7 @@ Note : i've purposely decided to not use quickshell for anything in the interest
 
 - battery notifier for laptops, you can customize it to show notifications at certain levels.
 
-- power saver mode, that only changes things for the current boot, so you can revert to default by rebooting. 
+- Togglable power saver mode.
 
 - system clean up (cache purge)- removes unwanted files to reclaim storage. 
 
