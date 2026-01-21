@@ -336,8 +336,8 @@
     "custom/theme": {
         "format": "󰔎",
         "tooltip-format": "Theme Switcher\n\nSwitch wallpapers with waypaper\nor Super + ' after toggling\nfor theme uniformity.\n\nLMB: Dark Mode\nRMB: Light Mode\nMMB: Waypaper",
-        "on-click": "uwsm-app -- ~/user_scripts/theme_matugen/matugen_config.sh --mode dark",
-        "on-click-right": "uwsm-app -- ~/user_scripts/theme_matugen/matugen_config.sh --mode light",
+        "on-click": "uwsm-app -- ~/user_scripts/theme_matugen/theme_ctl.sh set --mode dark",
+        "on-click-right": "uwsm-app -- ~/user_scripts/theme_matugen/theme_ctl.sh set --mode light",
         "on-click-middle": "uwsm-app -- waypaper"
     },
 

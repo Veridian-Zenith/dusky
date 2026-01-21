@@ -202,8 +202,11 @@ show_visuals_menu() {
     choice=$(menu "Visuals & Display" "󰸌  Cycle Matugen Theme\n󰸌  Matugen Config\n󰸉  Wallpaper App\n󰸉  Rofi Wallpaper\n󱐋  Animations\n󰃜  Shaders\n󰖨  Hyprsunset Slider\n󰖳  Blur/Opacity/Shadow\n󰍜  Waybar Config\n󰶡  Rotate Screen (CW)\n󰶣  Rotate Screen (CCW)\n󰐕  Scale Up (+)\n󰐖  Scale Down (-)")
     
     case "${choice,,}" in
-        *cycle*)            run_app "$SCRIPTS_DIR/theme_matugen/random_theme.sh" ;;
-        *matugen*config*)   run_app "$SCRIPTS_DIR/theme_matugen/matugen_config.sh" ;;
+        # CHANGED: Now points to the new theme_ctl.sh with the random flag
+        *cycle*)            run_app "$SCRIPTS_DIR/theme_matugen/theme_ctl.sh" random ;;
+        # CHANGED: Now points to your new Rofi script location
+        *matugen*config*)   run_app "$SCRIPTS_DIR/rofi/rofi_theme.sh" ;;
+        
         *rofi*wallpaper*)   run_app "$SCRIPTS_DIR/rofi/rofi_wallpaper_selctor.sh" ;;
         *wallpaper*app*)    run_app waypaper ;;
         *animation*)        run_app rofi -show animations -modi "animations:$SCRIPTS_DIR/rofi/hypr_anim.sh" ;;

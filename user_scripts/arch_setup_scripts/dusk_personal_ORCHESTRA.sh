@@ -37,7 +37,7 @@ INSTALL_SEQUENCE=(
     "U | 021_matugen_directories.sh"
     "U | 022_wallpapers_download.sh"
     "U | 023_blur_shadow_opacity.sh"
-    "U | 024_swww_wallpaper_matugen.sh"
+    "U | 024_theme_ctl.sh set --defaults"
     "U | 025_qtct_config.sh"
     "U | 026_waypaper_config_reset.sh"
     "U | 027_animation_default.sh"
