@@ -1,7 +1,7 @@
 //horizontal_Modern_nerdy - COMPACT VERSION
 {
     "layer": "top",
-    "position": "bottom",
+    "position": "top",
     "spacing": 0,
     "height": 28,
     "margin-top": 2,

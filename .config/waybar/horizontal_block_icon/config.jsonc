@@ -2,7 +2,7 @@
 {
   "exclusive": true,
   "reload_style_on_change": true,
-  "position": "bottom",
+  "position": "top",
   "spacing": 0,
   "height": 44,
   "margin-top": 0,
