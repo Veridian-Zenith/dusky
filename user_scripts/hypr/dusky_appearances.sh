@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # -----------------------------------------------------------------------------
-# Dusky Appearances - Elite Edition v7.5.1
+# Dusky Appearances - Elite Edition v7.5.2 (Unified UI Patch)
 # -----------------------------------------------------------------------------
 # Target: Arch Linux / Hyprland / UWSM
 # Description: Tabbed TUI to modify hyprland appearance.conf.
@@ -15,14 +15,15 @@ export LC_NUMERIC=C
 # --- Configuration ---
 readonly CONFIG_FILE="${HOME}/.config/hypr/edit_here/source/appearance.conf"
 readonly APP_TITLE="Dusky Appearances"
-readonly APP_VERSION="v7.5.1"
+readonly APP_VERSION="v7.5.2"
 
 # UI Layout Constants
-declare -ri MAX_DISPLAY_ROWS=12
-declare -ri BOX_INNER_WIDTH=64
+# UPDATED: Aligned with Dusky Input v5.2.3 for visual consistency
+declare -ri MAX_DISPLAY_ROWS=14
+declare -ri BOX_INNER_WIDTH=76
 declare -ri ITEM_START_ROW=5
-declare -ri ADJUST_THRESHOLD=30
-declare -ri ITEM_PADDING=22
+declare -ri ADJUST_THRESHOLD=40
+declare -ri ITEM_PADDING=28
 
 # --- Pre-computed Constants ---
 declare _H_LINE_BUF
