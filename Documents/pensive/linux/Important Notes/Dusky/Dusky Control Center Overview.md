@@ -1,6 +1,8 @@
 # Configuration Bible
 
-> [!INFO] **System Overview**
+> $$\!INFO$$
+> 
+> **System Overview**
 > 
 > **Version:** 2.0 (Forensic Build)
 > 
@@ -18,33 +20,50 @@ Before you configure, understand _why_ Dusky works the way it does.
 
 ### The "Restaurant" Analogy
 
-Think of Dusky Control Center like a high-end restaurant:
+To understand how the configuration works, think of Dusky Control Center like a high-end restaurant:
 
-1. **The YAML (`dusky_config.yaml`) is the Menu.** It lists what is available, but it doesn't cook the food.
+1. **The YAML (`dusky_config.yaml`) is the Menu.** It lists what is available, the prices, and the descriptions. It doesn't cook the food; it just describes it.
     
-2. **The Python Backend (`rows.py`) is the Kitchen.** It takes the order and prepares the widget.
+2. **The Python Backend (`rows.py`) is the Kitchen.** It takes the order and actually prepares the widget (buttons, sliders, toggles).
     
-3. **The Daemon Mode.** Unlike most apps that "close" (shut down the kitchen) when you click X, Dusky just turns off the lights. The kitchen staff stays ready. When you open it again, it's instant.
+3. **The Daemon Mode.** Unlike most apps that "close" (shut down the kitchen) when you click 'X', Dusky just turns off the dining room lights. The kitchen staff stays ready in the background. When you open it again, service is instant.
     
 
-### Performance Engineering
+### Performance Engineering (The "Kitchen Staff")
 
-> [!NOTE] Under the Hood
+> $$\!NOTE$$
 > 
-> - **Thread Safety:** Every time you see a label update or a toggle switch, a background thread handled the logic so the UI never "stutters."
+> Under the Hood
+> 
+> - **Thread Safety (The Head Chef):** Every time a label updates or a toggle switches, a background thread handles the work so the main UI (the waiter) never freezes while taking your order.
 >     
-> - **UWSM Compliance:** Apps launched by Dusky are wrapped in `uwsm-app`. This ensures they know they are in a Hyprland session and don't crash when you close the Control Center.
+> - **UWSM Compliance (The Health Inspector):** Apps launched by Dusky are wrapped in `uwsm-app`. This ensures they know they are running in a Hyprland session and don't crash or become "zombies" when you close the Control Center.
 >     
-> - **Hot Reload:** When you save the YAML and hit `Ctrl+R`, Dusky rebuilds the entire restaurant in milliseconds without kicking you out.
+> - **Hot Reload (Printing New Menus):** When you save the YAML and hit `Ctrl+R`, Dusky instantly prints a new menu and reorganizes the tables without kicking the customers (you) out.
 >     
 
 ## 2. Configuration Structure
 
 The configuration file is located at `$HOME/user_scripts/dusky_config.yaml`.
 
-The hierarchy is strict:
+The hierarchy is strict. If the indentation is wrong, the "Menu" is unreadable.
 
 **Pages** $\to$ **Layouts** (Sections) $\to$ **Items** (Widgets)
+
+The `dusky_config.yaml` is the heart of the system with this hierarchical structure:
+
+```
+pages (list)
+├── id, title, icon (page metadata)
+└── layout (list of sections)
+    ├── type: "section" | "grid_section" 
+    ├── properties (title, description)
+    └── items (list of widgets)
+        ├── button, toggle, slider, label, selection, entry
+        ├── navigation, expander, warning_banner
+        ├── grid_card, toggle_card
+        └── Properties & Actions
+```
 
 ```
 pages:
@@ -63,13 +82,15 @@ This section details every component available in the widget factory (`rows.py`)
 
 ### 3.1 Standard Button (`button`)
 
-The workhorse of the UI. Used for launching apps or scripts.
+**Analogy:** The Doorbell.
 
-**Event Type:** `on_press`
+You press it, and something happens immediately. It doesn't remember if you pressed it 5 minutes ago; it just triggers an action.
 
+- **Event Type:** `on_press`
+    
 - `type`: Must be `exec` (run command) or `redirect` (change page).
     
-- `terminal`: If `true`, opens a Kitty window holding the process.
+- `terminal`: If `true`, opens a Kitty window holding the process (good for scripts that need to show output).
     
 
 ```
@@ -88,24 +109,23 @@ The workhorse of the UI. Used for launching apps or scripts.
 
 ### 3.2 Toggle Switch (`toggle`)
 
-A complex widget that must **read** state (is it on?) and **write** state (turn it on).
+**Analogy:** The Light Switch.
 
-> [!TIP] The "State Monitor"
+This is smarter than a doorbell. It needs to know: "Is the light currently ON?" (Read) and "How do I turn it OFF?" (Write).
+
+> $$\!TIP$$
 > 
-> Toggles use a `StateMonitorMixin`. They poll the system every few seconds to see if the switch should be ON or OFF.
+> The "State Monitor"
+> 
+> Toggles use a `StateMonitorMixin`. They poll the system every few seconds to ensure the switch on your screen matches reality.
 
-**Properties:**
-
+- **Event Type:** `on_toggle`
+    
 - `state_command`: A shell command. If it returns "enabled", "on", or "active", the switch turns green.
     
-- `key`: Alternatively, link to a file in `~/.config/dusky/settings/`.
+- `key`: Alternatively, link to a file in `~/.config/dusky/settings/` for internal state.
     
 - `interval`: How often (in seconds) to check the state.
-    
-
-**Event Type:** `on_toggle`
-
-- Requires `enabled` and `disabled` blocks.
     
 
 ```
@@ -126,18 +146,15 @@ A complex widget that must **read** state (is it on?) and **write** state (turn 
 
 ### 3.3 Slider (`slider`)
 
-Used for Volume, Brightness, or custom integer values.
+**Analogy:** The Dimmer Switch.
 
-**Properties:**
+Used for Volume, Brightness, or any continuous value.
 
-- `min`, `max`, `step`: Define the range.
+- **Fast Path Optimization:** Unlike buttons, sliders use a direct `subprocess` call to reduce lag while dragging.
     
-- `debounce`: If `true`, waits for you to stop dragging before running the command (prevents lag).
+- `debounce`: If `true`, waits for you to _stop_ dragging before running the command. This prevents the system from crashing under 100 commands per second.
     
-
-**Event Type:** `on_change`
-
-- The `command` string supports a `{value}` placeholder which is replaced by the number.
+- `command`: Supports a `{value}` placeholder.
     
 
 ```
@@ -156,16 +173,15 @@ Used for Volume, Brightness, or custom integer values.
 
 ### 3.4 Selection Dropdown (`selection`)
 
-A dropdown menu (`Adw.ComboRow`) for choosing between pre-defined options.
+**Analogy:** The Menu Choice.
 
-**Properties:**
+"Would you like Fries, Salad, or Soup?" You pick one option from a list.
 
-- `options`: A list of strings to display.
+- **Event Type:** `on_change`
     
-
-**Event Type:** `on_change`
-
-- The `command` string supports a `{value}` placeholder (the text selected).
+- `options`: A simple list of text strings.
+    
+- `command`: Replaces `{value}` with the text you selected.
     
 
 ```
@@ -184,11 +200,13 @@ A dropdown menu (`Adw.ComboRow`) for choosing between pre-defined options.
 
 ### 3.5 Text Entry (`entry`)
 
-A text box with an "Apply" button.
+**Analogy:** The Comment Card.
 
-**Event Type:** `on_action`
+You write something specific (like a hostname or a custom message) and hand it over.
 
-- The `command` string supports a `{value}` placeholder (the text typed).
+- **Event Type:** `on_action`
+    
+- `command`: Replaces `{value}` with the text you typed.
     
 
 ```
@@ -205,11 +223,13 @@ A text box with an "Apply" button.
 
 ### 3.6 Grid Cards (`grid_card` / `toggle_card`)
 
-Large, square buttons used in the `grid_section` layout. Ideal for the "Home" page.
+**Analogy:** The Dashboard Tiles.
 
-- `grid_card`: Acts like a Button.
+These are large, square buttons used in the `grid_section` layout. Ideal for the "Home" page or "Quick Actions".
+
+- `grid_card`: Acts exactly like a **Button**.
     
-- `toggle_card`: Acts like a Toggle (changes color when active).
+- `toggle_card`: Acts exactly like a **Toggle** (changes color when active).
     
 
 ```
@@ -229,16 +249,18 @@ Large, square buttons used in the `grid_section` layout. Ideal for the "Home" pa
 
 ### 3.7 Dynamic Label (`label`)
 
-Displays text that updates automatically.
+**Analogy:** The Scoreboard.
 
-**Value Types:**
+You don't interact with it; you just read it. It updates itself automatically.
 
-- `exec`: Runs a command (e.g., `free -h`).
+- `value` -> `type`:
     
-- `file`: Reads a file path.
-    
-- `system`: Reads internal cached values (`kernel_version`, `cpu_model`, `memory_total`).
-    
+    - `exec`: Runs a command (e.g., `free -h`) and shows the output.
+        
+    - `file`: Reads a text file.
+        
+    - `system`: Reads extremely fast cached values (`kernel_version`, `cpu_model`, `memory_total`).
+        
 
 ```
 - type: label
@@ -250,9 +272,29 @@ Displays text that updates automatically.
     key: kernel_version
 ```
 
-### 3.8 Expander Row (`expander`)
+### 3.8 Navigation Row (`navigation`)
 
-A row that unfolds to reveal children. Useful for cleaning up cluttered pages.
+**Analogy:** The Secret Door. Unlike a standard button that launches a command, this row slides the entire view to a new sub-page. Use this to create nested menus without cluttering the main sidebar.
+
+- `layout`: A list of sections, identical to the main page layout structure.
+    
+
+```
+- type: navigation
+  properties:
+    title: Advanced Settings
+    icon: preferences-other-symbolic
+  layout:
+    - type: section
+      properties: { title: "Deeper Settings" }
+      items: [ ... ]
+```
+
+### 3.9 Expander Row (`expander`)
+
+**Analogy:** The Folding Map.
+
+It looks like a single line, but click it, and it unfolds to reveal more settings in place. Use this to hide advanced settings so they don't clutter the page.
 
 ```
 - type: expander
@@ -266,9 +308,11 @@ A row that unfolds to reveal children. Useful for cleaning up cluttered pages.
       properties: { title: "IPv6", ... }
 ```
 
-### 3.9 Warning Banner (`warning_banner`)
+### 3.10 Warning Banner (`warning_banner`)
 
-A static, styled widget used to display alerts.
+**Analogy:** The "Wet Floor" Sign.
+
+A visual alert to warn users about sensitive settings.
 
 ```
 - type: warning_banner
@@ -281,7 +325,9 @@ A static, styled widget used to display alerts.
 
 ### 4.1 Hot Reload (`Ctrl+R`)
 
-You do **not** need to restart the application to see changes.
+**Analogy:** Changing the Menu while the restaurant is open.
+
+You do **not** need to close and reopen the application to see your changes.
 
 1. Edit `dusky_config.yaml`.
     
@@ -290,28 +336,32 @@ You do **not** need to restart the application to see changes.
 3. Press `Ctrl + R`.
     
 
-> [!WARNING] State Preservation
+> $$\!WARNING$$
 > 
-> Dusky attempts to remember which page you were on. If you delete that page in the config, it will default back to the first page.
+> State Preservation
+> 
+> Dusky attempts to remember exactly which page you were on. However, if you delete that page in the config, it will default back to the first page.
 
 ### 4.2 Deep Search (`Ctrl+F`)
 
-Dusky includes a recursive indexing engine.
+**Analogy:** The Index.
 
-- It indexes Page Titles, Section Titles, Item Titles, and Descriptions.
+Dusky includes a recursive indexing engine that finds needles in haystacks.
+
+- It indexes **Page Titles**, **Section Titles**, **Item Titles**, and even **Descriptions**.
     
 - It creates "Breadcrumbs" (e.g., _Home > Network > VPN_) so you know exactly where a setting lives.
     
-- **Grid Cards** and **Toggles** found in search results are automatically converted into List Rows for better readability in the search view.
+- **Grid Cards** and **Toggles** found in search results are automatically converted into standard List Rows so they look good in the search results list.
     
 
 ### 4.3 Sidebar Toggle
 
 The interface uses `Adw.OverlaySplitView`.
 
-- On wide monitors, the sidebar is pinned.
+- On wide monitors, the sidebar is pinned (always visible).
     
-- On small windows, the sidebar collapses.
+- On small windows, the sidebar collapses (hides).
     
 - Clicking the "Dusky" icon in the top left or the sidebar toggle button will slide the menu in/out.
     
@@ -320,68 +370,22 @@ The interface uses `Adw.OverlaySplitView`.
 
 ### "The toggle switches back instantly"
 
-This happens when the `state_command` reports the old state.
-
-- **Cause:** You clicked the toggle, the command ran, but the system (e.g., NetworkManager) took 1 second to actually change status. The Monitor checked instantly, saw the old status, and flipped the switch back.
+- **Cause:** The `state_command` is reporting the _old_ state.
     
-- **Fix:** Ensure your toggle scripts wait for the process to finish, or accept that the switch will correct itself on the next `interval` tick.
+- **Explanation:** You clicked the toggle, the command ran, but the system (e.g., NetworkManager) took 1 second to actually change status. The Dusky Monitor checked instantly, saw the old status, and flipped the switch back to match reality.
+    
+- **Fix:** Ensure your toggle scripts wait for the process to finish, or accept that the switch will correct itself on the next `interval` tick (usually 5 seconds).
     
 
 ### "My command works in terminal but not in Dusky"
 
 - **Cause:** Path issues.
     
-- **Fix:** Always use absolute paths (e.g., `/usr/bin/htop` instead of `htop`). While Dusky handles `$HOME` expansion, it does not load your `.bashrc` aliases unless you explicitly call `bash -i -c "command"`.
+- **Fix:** Always use absolute paths (e.g., `/usr/bin/htop` instead of `htop`). While Dusky handles `$HOME` expansion, it does not automatically load your `.bashrc` aliases.
     
 
 ### "The app won't open"
 
-- **Check:** Run `dusky_control_center.py` from a terminal to see the stderr output.
+- **Check:** Run `dusky_control_center.py` from a terminal to see the error output.
     
-- **Recover:** If the config is broken, Dusky will launch into a special "Error State" page showing you the Python stack trace, allowing you to fix the YAML and Hot Reload without crashing.**ROLE:** You are a Senior Technical Technical Writer and Systems Architect specializing in Linux GUI development, GTK4/Libadwaita, and Python optimization. You have a talent for explaining complex backend architectures to end-users using clear analogies, while maintaining technical accuracy for power users.
-    
-    **CONTEXT:** I am deploying a custom-built GTK4 Control Center app ("Dusky Control Center") to over 700,000 users on Arch Linux/Hyprland. The app is built with Python (using `PyGObject`), configured via YAML, and styled via CSS. It features hot-reloading, UWSM (Universal Wayland Session Manager) compliance, thread-safe execution, and a modular widget system.
-    
-    **TASK PHASE 1: FORENSIC ANALYSIS** Before writing a single word of the tutorial, you must perform a forensic analysis of the provided codebases. Do not output this analysis, but hold it in your context to inform the documentation.
-    
-    1. **Analyze `dusky_control_center.py`:** Understand the Application Lifecycle, the Daemon/Single-Instance logic, the Hot-Reload mechanism (async threading), the Search architecture (recursive indexing), and the UI construction (OverlaySplitView).
-        
-    2. **Analyze `rows.py`:** Deconstruct the Widget Factory. Identify every single supported `ItemType` (Button, Toggle, Slider, Selection, Entry, Grid Card, etc.). Understand the specific optimizations like "Fast Path" execution for Sliders (subprocess.Popen vs utility.execute_command) and Debouncing logic.
-        
-    3. **Analyze `utility.py`:** Understand the thread-safe caching (`_ComputeOnceCache`), atomic file I/O for settings, and the `uwsm-app` command wrapping for process detachment.
-        
-    4. **Analyze `dusky_config.yaml`:** Understand the schema: Pages -> Sections -> Items.
-        
-    5. **Analyze `dusky_style.css`:** Understand the "Boxed List" grouping logic (CSS pseudo-classes) and Libadwaita design tokens.
-        
-    
-    **TASK PHASE 2: THE OUTPUT** Write a comprehensive, future-proof **Obsidian-Formatted Markdown Configuration Guide**. This document will serve as the "Bible" for this application. It must be beautiful, categorized, and easy to read.
-    
-    **REQUIREMENTS:**
-    
-    6. **Obsidian Formatting:** Use Callouts (`> [!INFO]`, `> [!WARNING]`), Code Blocks with language highlighting, Headers, and bolding for emphasis.
-        
-    7. **Analogies:** Use real-world analogies to explain how the YAML config talks to the Python backend (e.g., "The YAML is the menu, the Python is the kitchen").
-        
-    8. **Comprehensive Configuration Guide:**
-        
-        - Walk through **every single widget type** found in `rows.py` (`button`, `toggle`, `slider`, `selection`, `entry`, `grid_card`, `toggle_card`, `label`, `navigation`, `expander`).
-            
-        - For each widget, provide a YAML snippet example and explain its properties (`debounce`, `terminal`, `command`, `options`, `placeholder`, etc.).
-            
-        - Explain the difference between `on_press`, `on_change`, and `on_toggle`.
-            
-    9. **Feature Deep Dives:**
-        
-        - Explain **Hot Reload** (Ctrl+R) and why it's safe (state preservation).
-            
-        - Explain **Search** (Ctrl+F) and how it finds items deeply nested in menus.
-            
-        - Explain the **Sidebar Toggle** logic.
-            
-    10. **Performance & Architecture (Simplified):** Briefly explain _why_ this app is fast (Thread pooling, Slider fast-paths, UWSM compliance) so the user appreciates the engineering.
-        
-    
-    **TONE:** Professional, authoritative, yet extremely accessible. Assume the user is smart but may be new to coding.
-    
-    **INPUT FILES:** [Paste the contents of `dusky_control_center.py`, `rows.py`, `utility.py`, `dusky_config.yaml`, and `dusky_style.css` here]
+- **Recover:** If the config is broken, Dusky will launch into a special "Error State" page showing you the Python stack trace, allowing you to fix the YAML and Hot Reload (`Ctrl+R`) without crashing.
