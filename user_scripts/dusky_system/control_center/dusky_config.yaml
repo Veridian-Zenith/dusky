@@ -1045,13 +1045,13 @@ pages:
     - type: navigation
       properties:
         title: User Customizations
-        description: Main Hyprland config and Keybinds
+        description: Main Hyprland config
         icon: preferences-desktop-symbolic
       layout:
         - type: section
           properties:
             title: User Customizations
-            description: "TUI: User-friendly menu | File: Raw text editor"
+            description: "Edit hyprland.conf"
           items:
             - type: button
               properties:
@@ -1063,6 +1063,17 @@ pages:
                 type: exec
                 command: gnome-text-editor "$HOME/.config/hypr/edit_here/hyprland.conf"
                 terminal: false
+
+    - type: navigation
+      properties:
+        title: Keybinds & Input
+        description: Keyboard shortcuts and input devices
+        icon: input-keyboard-symbolic
+      layout:
+        - type: section
+          properties:
+            title: Keybinds & Input
+          items:
             - type: button
               properties:
                 title: Keybinds
@@ -1080,6 +1091,23 @@ pages:
                     on_press:
                       type: exec
                       command: kitty --class dusky_keybinds.sh --hold sh -c "$HOME/user_scripts/hypr/dusky_keybinds.sh"
+            - type: button
+              properties:
+                title: Input
+                description: Edit input configuration
+                icon: input-mouse-symbolic
+                buttons:
+                  - icon: text-x-script-symbolic
+                    button_text: "File"
+                    on_press:
+                      type: exec
+                      command: gnome-text-editor "$HOME/.config/hypr/edit_here/source/input.conf"
+                  - icon: input-mouse-symbolic
+                    button_text: "TUI"
+                    style: suggested
+                    on_press:
+                      type: exec
+                      command: kitty --class dusky_input.sh --hold sh -c "$HOME/user_scripts/hypr/dusky_input.sh"
 
     - type: navigation
       properties:
@@ -1142,8 +1170,8 @@ pages:
     - type: navigation
       properties:
         title: Window Management
-        description: Monitors, Window Rules, Input
-        icon: preferences-system-windows-symbolic
+        description: Monitors, Window Rules
+        icon: view-dual-symbolic
       layout:
         - type: section
           properties:
@@ -1183,23 +1211,6 @@ pages:
                     on_press:
                       type: exec
                       command: kitty --class dusky_window_rules.sh --hold sh -c "$HOME/user_scripts/hypr/dusky_window_rules.sh"
-            - type: button
-              properties:
-                title: Input
-                description: Edit input configuration
-                icon: input-mouse-symbolic
-                buttons:
-                  - icon: text-x-script-symbolic
-                    button_text: "File"
-                    on_press:
-                      type: exec
-                      command: gnome-text-editor "$HOME/.config/hypr/edit_here/source/input.conf"
-                  - icon: input-mouse-symbolic
-                    button_text: "TUI"
-                    style: suggested
-                    on_press:
-                      type: exec
-                      command: kitty --class dusky_input.sh --hold sh -c "$HOME/user_scripts/hypr/dusky_input.sh"
 
     - type: navigation
       properties:
