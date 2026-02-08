@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 # -----------------------------------------------------------------------------
-# Dusky Matugen Presets v3.6.0 (Optimized & Hardened)
+# Dusky Matugen Presets v3.6.1 (Fixed & Hardened)
 # -----------------------------------------------------------------------------
 # Target: Arch Linux / Hyprland / Matugen
 # Description: High-performance TUI for applying Matugen color schemes.
+# -----------------------------------------------------------------------------
+# CHANGES from v3.6.0:
+#   - FIX: Ported manual mouse parsing from Master Template (removes broken regex).
+#   - FIX: Added strict read_escape_seq from Master Template for atomic input.
+#   - FIX: Hardened cleanup trap to prevent broken pipe errors on exit.
 # -----------------------------------------------------------------------------
 
 set -euo pipefail
@@ -16,7 +21,7 @@ export LC_NUMERIC=C
 # =============================================================================
 
 readonly APP_TITLE="Dusky Matugen Presets"
-readonly APP_VERSION="v3.6.0"
+readonly APP_VERSION="v3.6.1"
 
 # --- State Management ---
 readonly USE_STATE_FILE=false
@@ -63,9 +68,10 @@ readonly CURSOR_SHOW=$'\033[?25h'
 readonly MOUSE_ON=$'\033[?1000h\033[?1002h\033[?1006h'
 readonly MOUSE_OFF=$'\033[?1000l\033[?1002l\033[?1006l'
 
-# Timeout for reading escape sequence continuation bytes
-# Kept at 0.02s to match dusky_tui.sh template
-readonly ESC_READ_TIMEOUT=0.02
+# Timeout for reading escape sequences (seconds).
+# 0.05s is reliable for full SGR mouse sequences over SSH/tmux.
+#
+readonly ESC_READ_TIMEOUT=0.05
 
 # =============================================================================
 # ▼ DATA REGISTRATION ▼
@@ -266,12 +272,13 @@ log_err() {
     printf '%s[ERROR]%s %s\n' "${C_RED}" "${C_RESET}" "$1" >&2
 }
 
+# Adapted from Master Template: Silence output to prevent "write error: broken pipe"
 cleanup() {
-    printf '%s%s%s' "${MOUSE_OFF}" "${CURSOR_SHOW}" "${C_RESET}"
+    printf '%s%s%s' "$MOUSE_OFF" "$CURSOR_SHOW" "$C_RESET" 2>/dev/null || :
     if [[ -n "${ORIGINAL_STTY:-}" ]]; then
-        stty "${ORIGINAL_STTY}" 2>/dev/null || :
+        stty "$ORIGINAL_STTY" 2>/dev/null || :
     fi
-    printf '\n'
+    printf '\n' 2>/dev/null || :
 }
 
 trap cleanup EXIT
@@ -624,6 +631,15 @@ switch_tab() {
     SCROLL_OFFSET=0
 }
 
+set_tab() {
+    local -i idx=$1
+    if (( idx != CURRENT_TAB && idx >= 0 && idx < TAB_COUNT )); then
+        CURRENT_TAB=$idx
+        SELECTED_ROW=0
+        SCROLL_OFFSET=0
+    fi
+}
+
 handle_enter() {
     local -n _act_ref="TAB_ITEMS_${CURRENT_TAB}"
     (( ${#_act_ref[@]} == 0 )) && return 0
@@ -638,66 +654,92 @@ adjust_setting() {
     modify_setting "${_adj_ref[${SELECTED_ROW}]}" "${dir}"
 }
 
+# Adapted from Master Template: Manual parsing robust against regex edge cases.
+#
 handle_mouse() {
     local input=$1
-    local -i button x y
-    local match_type
+    local -i button x y i start end
+    local type zone
 
-    # Strict SGR regex matching dusky_tui.sh template behavior
-    if [[ "${input}" =~ ^\[<([0-9]+)\;([0-9]+)\;([0-9]+)([Mm])$ ]]; then
-        button=${BASH_REMATCH[1]}
-        x=${BASH_REMATCH[2]}
-        y=${BASH_REMATCH[3]}
-        match_type="${BASH_REMATCH[4]}"
-    else
-        return 0
-    fi
+    # SGR mouse: input is like [<0;45;3M or [<64;10;5m
+    # Strip the leading [< to parse the numeric fields
+    local body=${input#'[<'}
+    [[ "$body" == "$input" ]] && return 0  # No [< prefix found
+
+    local terminator=${body: -1}
+    [[ "$terminator" != "M" && "$terminator" != "m" ]] && return 0
+
+    body=${body%[Mm]}
+    local field1 field2 field3
+    IFS=';' read -r field1 field2 field3 <<< "$body"
+
+    # Validate all fields are numeric
+    [[ ! "$field1" =~ ^[0-9]+$ ]] && return 0
+    [[ ! "$field2" =~ ^[0-9]+$ ]] && return 0
+    [[ ! "$field3" =~ ^[0-9]+$ ]] && return 0
+
+    button=$field1
+    x=$field2
+    y=$field3
 
     # Scroll wheel
     if (( button == 64 )); then navigate -1; return 0; fi
     if (( button == 65 )); then navigate 1; return 0; fi
 
-    # Only act on button press, not release
-    [[ "${match_type}" != "M" ]] && return 0
+    # Only process press events (M = press, m = release)
+    [[ "$terminator" != "M" ]] && return 0
 
-    # Tab bar clicks (row 4)
+    # Tab bar clicks (row 4 in this preset script)
     if (( y == 4 )); then
-        local -i ti start end
-        local zone
-        for (( ti = 0; ti < TAB_COUNT; ti++ )); do
-            zone="${TAB_ZONES[ti]}"
-            start="${zone%%:*}"
-            end="${zone##*:}"
-            if (( x >= start && x <= end )); then
-                CURRENT_TAB=$ti
-                SELECTED_ROW=0
-                SCROLL_OFFSET=0
-                return 0
-            fi
+        for (( i = 0; i < TAB_COUNT; i++ )); do
+            zone=${TAB_ZONES[i]}
+            start=${zone%%:*}
+            end=${zone##*:}
+            if (( x >= start && x <= end )); then set_tab "$i"; return 0; fi
         done
         return 0
     fi
 
-    # Item list clicks
+    # Item area click
+    # In preset script, items start visually below header
     local -i item_start_y=$(( ITEM_START_ROW + 1 ))
-    local -n _mouse_ref="TAB_ITEMS_${CURRENT_TAB}"
-    local -i count=${#_mouse_ref[@]}
+    local -n _mouse_items_ref="TAB_ITEMS_${CURRENT_TAB}"
+    local -i count=${#_mouse_items_ref[@]}
 
     if (( y >= item_start_y && y < item_start_y + MAX_DISPLAY_ROWS )); then
         local -i clicked_idx=$(( y - item_start_y + SCROLL_OFFSET ))
         if (( clicked_idx >= 0 && clicked_idx < count )); then
-            SELECTED_ROW=${clicked_idx}
+            SELECTED_ROW=$clicked_idx
+            
+            # Logic specific to preset functionality (Settings vs Action)
             if (( CURRENT_TAB == 6 && x > ADJUST_THRESHOLD )); then
-                if (( button == 0 )); then
-                    adjust_setting 1
-                else
-                    adjust_setting -1
-                fi
+                if (( button == 0 )); then adjust_setting 1; else adjust_setting -1; fi
             else
-                trigger_action "${_mouse_ref[${clicked_idx}]}"
+                trigger_action "${_mouse_items_ref[${clicked_idx}]}"
             fi
         fi
     fi
+    return 0
+}
+
+# --- Smart Escape Sequence Reader ---
+# Reads until a valid terminator is found, preventing sequence fragmentation.
+# Result is stored in the nameref variable passed as $1.
+#
+read_escape_seq() {
+    local -n _esc_out=$1
+    local char
+    _esc_out=""
+
+    while IFS= read -rsn1 -t "$ESC_READ_TIMEOUT" char; do
+        _esc_out+="$char"
+        case "$_esc_out" in
+            '[Z')              return 0 ;; # Shift-Tab
+            O[A-Za-z])         return 0 ;; # SS3 sequences
+            '['*[A-Za-z~])     return 0 ;; # CSI sequences (arrows, mouse, function keys)
+        esac
+    done
+    return 0
 }
 
 # =============================================================================
@@ -717,30 +759,31 @@ main() {
     load_state
 
     ORIGINAL_STTY=$(stty -g 2>/dev/null) || ORIGINAL_STTY=""
-    stty -icanon -echo min 1 time 0 2>/dev/null || true
+    if ! stty -icanon -echo min 1 time 0 2>/dev/null; then
+        log_err "Failed to configure terminal (stty). Cannot run interactively."
+        exit 1
+    fi
 
     printf '%s%s%s%s' "${MOUSE_ON}" "${CURSOR_HIDE}" "${CLR_SCREEN}" "${CURSOR_HOME}"
 
-    local key seq char
+    local key escape_seq
 
     while true; do
         draw_ui
 
         IFS= read -rsn1 key || break
 
-        if [[ "${key}" == $'\x1b' ]]; then
-            seq=""
-            while IFS= read -rsn1 -t "${ESC_READ_TIMEOUT}" char; do
-                seq+="${char}"
-            done
+        if [[ "$key" == $'\x1b' ]]; then
+            # Use atomic reader from Master Template
+            read_escape_seq escape_seq
 
-            case "${seq}" in
+            case "$escape_seq" in
                 '[Z')           switch_tab -1 ;;
                 '[A'|'OA')      navigate -1 ;;
                 '[B'|'OB')      navigate 1 ;;
                 '[C'|'OC')      adjust_setting 1 ;;
                 '[D'|'OD')      adjust_setting -1 ;;
-                '['*'<'*)       handle_mouse "${seq}" ;;
+                '['*'<'*[Mm])   handle_mouse "$escape_seq" ;;
                 *)              ;;
             esac
         else
